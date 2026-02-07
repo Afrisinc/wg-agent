@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Get tag version
+        id: tag_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+
+          # Linux AMD64
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/wg-agent-linux-amd64 \
+            -ldflags="-X main.Version=${{ steps.tag_version.outputs.VERSION }}" .
+
+          # Linux ARM64
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o dist/wg-agent-linux-arm64 \
+            -ldflags="-X main.Version=${{ steps.tag_version.outputs.VERSION }}" .
+
+          # Create checksums
+          cd dist && sha256sum * > SHA256SUMS && cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/wg-agent-linux-amd64
+            dist/wg-agent-linux-arm64
+            dist/SHA256SUMS
+          body: |
+            ## Changes
+            See [CHANGELOG](https://github.com/${{ github.repository }}/blob/${{ steps.tag_version.outputs.VERSION }}/CHANGELOG.md)
+
+            ## Installation
+            Download the appropriate binary for your system and verify the checksum:
+            ```bash
+            sha256sum -c SHA256SUMS
+            ```
+          draft: false
+          prerelease: false
+
+      - name: Publish to registries
+        run: |
+          echo "Release ${{ steps.tag_version.outputs.VERSION }} published successfully"

@@ -1,0 +1,376 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "WireGuard Agent API",
+    "description": "Secure HTTP API for managing WireGuard peers",
+    "version": "1.0.0",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "name": "API Support",
+      "url": "http://www.swagger.io/support"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "host": "localhost:9999",
+  "basePath": "/",
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "ApiKeyAuth": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-Key"
+    }
+  },
+  "paths": {
+    "/add-peer": {
+      "post": {
+        "summary": "Add a new WireGuard peer",
+        "description": "Add a new peer to the WireGuard interface with specified public key and allowed IP",
+        "tags": [
+          "Peers"
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "API Key",
+            "required": true,
+            "type": "string",
+            "default": "Bearer your-api-key"
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "description": "Peer configuration",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AddPeerRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/remove-peer": {
+      "post": {
+        "summary": "Remove a WireGuard peer",
+        "description": "Remove a peer from the WireGuard interface by public key",
+        "tags": [
+          "Peers"
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "API Key",
+            "required": true,
+            "type": "string",
+            "default": "Bearer your-api-key"
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "description": "Peer public key",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RemovePeerRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/status": {
+      "get": {
+        "summary": "Get WireGuard status",
+        "description": "Get the current status of the WireGuard interface including all connected peers",
+        "tags": [
+          "Status"
+        ],
+        "produces": [
+          "text/plain"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "API Key",
+            "required": true,
+            "type": "string",
+            "default": "Bearer your-api-key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "WireGuard status output",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/public-key": {
+      "get": {
+        "summary": "Get server public key",
+        "description": "Retrieve the public key of the WireGuard interface",
+        "tags": [
+          "Configuration"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "API Key",
+            "required": true,
+            "type": "string",
+            "default": "Bearer your-api-key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public key",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "description": "Check if the WireGuard Agent is running and healthy",
+        "tags": [
+          "Health"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Healthy status",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Readiness check",
+        "description": "Check if the WireGuard Agent is ready to handle requests",
+        "tags": [
+          "Health"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Ready status",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "AddPeerRequest": {
+      "type": "object",
+      "properties": {
+        "allowed_ip": {
+          "type": "string",
+          "example": "192.168.1.100"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "public_key": {
+          "type": "string",
+          "example": "jI6DsucHvzJzcow3v7CqvJODct9+pWG8V+MlaWL7yGc="
+        }
+      },
+      "required": [
+        "public_key",
+        "allowed_ip"
+      ]
+    },
+    "RemovePeerRequest": {
+      "type": "object",
+      "properties": {
+        "public_key": {
+          "type": "string",
+          "example": "jI6DsucHvzJzcow3v7CqvJODct9+pWG8V+MlaWL7yGc="
+        }
+      },
+      "required": [
+        "public_key"
+      ]
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "SuccessResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

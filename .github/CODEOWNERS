@@ -1,0 +1,25 @@
+# Code Owners - who should review PRs for different areas
+
+# Core agent logic
+/main.go @afrisinc
+/internal/ @afrisinc
+
+# Tests
+*_test.go @afrisinc
+
+# Docker and deployment
+/Dockerfile @afrisinc
+/docker-compose.yml @afrisinc
+/DEPLOYMENT.md @afrisinc
+
+# CI/CD
+/.github/workflows/ @afrisinc
+
+# Documentation
+*.md @afrisinc
+/CONTRIBUTING.md @afrisinc
+
+# Repository files
+.gitignore @afrisinc
+go.mod @afrisinc
+go.sum @afrisinc

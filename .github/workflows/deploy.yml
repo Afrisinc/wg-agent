@@ -1,0 +1,255 @@
+name: Deploy WireGuard Agent
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - master
+  pull_request:
+    branches:
+      - main
+      - develop
+      - master
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Private Registry (Optional)
+        if: github.event_name != 'pull_request' && secrets.DEPLOY_GHCR_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.DEPLOY_GHCR_USERNAME }}
+          password: ${{ secrets.DEPLOY_GHCR_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ${{ secrets.DOCKER_REGISTRY }}/wg-agent
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image digest
+        run: echo "Image built successfully with digest: ${{ steps.docker_build.outputs.digest }}"
+
+  deploy:
+    name: Deploy to VPS
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
+
+    environment:
+      name: production
+      url: https://${{ secrets.VPS_HOST }}:9999
+
+    env:
+      DEPLOY_GHCR_USERNAME: ${{ secrets.DEPLOY_GHCR_USERNAME }}
+      DEPLOY_GHCR_TOKEN: ${{ secrets.DEPLOY_GHCR_TOKEN }}
+      DEPLOY_DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+      DOCKER_IMAGE: ${{ secrets.DOCKER_REGISTRY }}/wg-agent
+      BRANCH_NAME: ${{ github.ref == 'refs/heads/main' && 'main' || (github.ref == 'refs/heads/develop' && 'develop' || 'master') }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.6.1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          timeout: 30s
+          command_timeout: 10m
+
+          # Pass deployment credentials to VPS
+          envs: DEPLOY_GHCR_USERNAME,DEPLOY_GHCR_TOKEN,DOCKER_IMAGE,BRANCH_NAME
+
+          script: |
+            set -e
+            APP_PATH="${{ secrets.VPS_APP_PATH }}"
+            APP_PATH=${APP_PATH:=/opt/apps/afrisinc/wg-agent}
+            API_KEY="${{ secrets.WG_AGENT_API_KEY }}"
+            HOST="${{ secrets.WG_AGENT_HOST || '0.0.0.0' }}"
+            PORT="${{ secrets.WG_AGENT_PORT || '9999' }}"
+            echo "🚀 Deploying WireGuard Agent to $APP_PATH"
+            echo "📦 Image: $DOCKER_IMAGE:$BRANCH_NAME"
+            mkdir -p $APP_PATH
+            cd $APP_PATH
+            cat > docker-compose.yml <<'COMPOSE'
+            version: '3.8'
+            services:
+              wg-agent:
+                image: ${DOCKER_IMAGE}:${BRANCH_NAME}
+                container_name: wg-agent
+                restart: unless-stopped
+                cap_add:
+                  - NET_ADMIN
+                  - SYS_MODULE
+                ports:
+                  - "${HOST}:${PORT}:9999"
+                environment:
+                  API_KEY: ${API_KEY}
+                  HOST: "0.0.0.0"
+                  PORT: 9999
+                  WG_INTERFACE: wg0
+                  LOG_LEVEL: info
+                volumes:
+                  - /etc/wireguard:/etc/wireguard:ro
+                healthcheck:
+                  test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9999/health"]
+                  interval: 30s
+                  timeout: 5s
+                  retries: 3
+                  start_period: 10s
+            COMPOSE
+            if [ -n "$DEPLOY_GHCR_USERNAME" ] && [ -n "$DEPLOY_GHCR_TOKEN" ]; then
+              echo "$DEPLOY_GHCR_TOKEN" | docker login ghcr.io -u "$DEPLOY_GHCR_USERNAME" --password-stdin
+              echo "✅ Logged in to GHCR"
+            fi
+            echo "📥 Pulling latest image..."
+            docker compose pull
+            echo "🛑 Stopping old container..."
+            docker compose down 2>/dev/null || true
+            echo "▶️  Starting new container..."
+            docker compose up -d --remove-orphans
+            echo "🧹 Cleaning up images..."
+            docker image prune -af
+            echo "🔍 Verifying deployment..."
+            sleep 3
+            docker compose ps
+            echo "📋 Container logs (last 20 lines):"
+            docker compose logs --tail=20 wg-agent || true
+            echo "💚 Testing health endpoint..."
+            if curl -sf http://localhost:${PORT}/health > /dev/null; then
+              echo "✅ Health check passed!"
+            else
+              echo "⚠️  Health check failed - please verify logs"
+            fi
+            echo "✨ Deployment complete!"
+
+      - name: Deployment Status
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          echo "📍 Access at: http://${{ secrets.VPS_HOST }}:${{ secrets.WG_AGENT_PORT || '9999' }}/swagger/"
+
+      - name: Deployment Failed
+        if: failure()
+        run: echo "❌ Deployment failed - check logs above"
+
+  notify:
+    name: Send Notification
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Send Slack Notification
+        if: secrets.SLACK_WEBHOOK != ''
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "WireGuard Agent Deployment",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚀 WireGuard Agent Deployment"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:*\n${{ needs.deploy.result == 'success' && '✅ Success' || '❌ Failed' }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n${{ github.sha }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Author:*\n${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Workflow>"
+                  }
+                }
+              ]
+            }
+
+      - name: Send Discord Notification
+        if: secrets.DISCORD_WEBHOOK != ''
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ needs.deploy.result }}
+          title: WireGuard Agent Deployment
+          description: |
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.sha }}
+            **Author:** ${{ github.actor }}
+          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
