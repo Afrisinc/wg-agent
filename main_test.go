@@ -151,7 +151,10 @@ func TestAddPeerHandler(t *testing.T) {
 			PublicKey: "invalid",
 			AllowedIP: "192.168.1.1",
 		}
-		body, _ := json.Marshal(reqBody)
+		body, err := json.Marshal(reqBody)
+		if err != nil {
+			t.Fatalf("Failed to marshal request: %v", err)
+		}
 
 		req := httptest.NewRequest("POST", "/add-peer", bytes.NewReader(body))
 		req.Header.Set("X-API-Key", "test-key")
@@ -169,7 +172,10 @@ func TestAddPeerHandler(t *testing.T) {
 			PublicKey: "jI6DsucHvzJzcow3v7CqvJODct9+pWG8V+MlaWL7yGc=",
 			AllowedIP: "invalid-ip",
 		}
-		body, _ := json.Marshal(reqBody)
+		body, err := json.Marshal(reqBody)
+		if err != nil {
+			t.Fatalf("Failed to marshal request: %v", err)
+		}
 
 		req := httptest.NewRequest("POST", "/add-peer", bytes.NewReader(body))
 		req.Header.Set("X-API-Key", "test-key")
@@ -194,7 +200,9 @@ func TestHealthHandler(t *testing.T) {
 	}
 
 	var resp map[string]string
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
 	if resp["status"] != "healthy" {
 		t.Errorf("Expected healthy status, got %s", resp["status"])
 	}

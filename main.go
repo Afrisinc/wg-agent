@@ -66,7 +66,7 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			log.Printf("Unauthorized access attempt from %s", r.RemoteAddr)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(ErrorResponse{
+			_ = json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "unauthorized",
 				Message: "Invalid or missing API key",
 			})
@@ -126,7 +126,7 @@ func addPeerHandler(w http.ResponseWriter, r *http.Request) {
 	var req AddPeerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
 			Error:   "invalid_request",
 			Message: fmt.Sprintf("Invalid JSON: %v", err),
 		})
@@ -136,7 +136,7 @@ func addPeerHandler(w http.ResponseWriter, r *http.Request) {
 	// Validate input
 	if !validatePublicKey(req.PublicKey) {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
 			Error:   "invalid_public_key",
 			Message: "Public key format is invalid",
 		})
@@ -145,7 +145,7 @@ func addPeerHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !validateIP(req.AllowedIP) {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
 			Error:   "invalid_ip",
 			Message: "IP address format is invalid",
 		})
@@ -249,11 +249,11 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Error getting status: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error: %v\n", err)))
+		_, _ = w.Write([]byte(fmt.Sprintf("Error: %v\n", err)))
 		return
 	}
 
-	w.Write(output)
+	_, _ = w.Write(output)
 }
 
 // publicKeyHandler returns the server's WireGuard public key
@@ -366,14 +366,14 @@ func swaggerHandler(w http.ResponseWriter, r *http.Request) {
     </script>
   </body>
 </html>`
-	w.Write([]byte(html))
+	_, _ = w.Write([]byte(html))
 }
 
 // swaggerJSONHandler serves the Swagger JSON definition
 func swaggerJSONHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	swaggerJSON := `{"swagger":"2.0","info":{"title":"WireGuard Agent API","description":"Secure HTTP API for managing WireGuard peers","version":"1.0.0"},"host":"localhost:9999","basePath":"/","schemes":["http","https"],"consumes":["application/json"],"produces":["application/json"],"securityDefinitions":{"ApiKeyAuth":{"type":"apiKey","in":"header","name":"X-API-Key"}},"paths":{"/add-peer":{"post":{"summary":"Add a new WireGuard peer","tags":["Peers"],"parameters":[{"name":"X-API-Key","in":"header","type":"string","required":true},{"name":"body","in":"body","schema":{"$ref":"#/definitions/AddPeerRequest"}}],"responses":{"200":{"description":"Success","schema":{"$ref":"#/definitions/SuccessResponse"}},"400":{"description":"Bad Request"},"401":{"description":"Unauthorized"},"500":{"description":"Server Error"}},"security":[{"ApiKeyAuth":[]}]}},"/remove-peer":{"post":{"summary":"Remove a WireGuard peer","tags":["Peers"],"parameters":[{"name":"X-API-Key","in":"header","type":"string","required":true},{"name":"body","in":"body","schema":{"$ref":"#/definitions/RemovePeerRequest"}}],"responses":{"200":{"description":"Success"},"400":{"description":"Bad Request"},"401":{"description":"Unauthorized"},"500":{"description":"Server Error"}},"security":[{"ApiKeyAuth":[]}]}},"/status":{"get":{"summary":"Get WireGuard status","tags":["Status"],"parameters":[{"name":"X-API-Key","in":"header","type":"string","required":true}],"responses":{"200":{"description":"Success"},"401":{"description":"Unauthorized"},"500":{"description":"Server Error"}},"security":[{"ApiKeyAuth":[]}]}},"/public-key":{"get":{"summary":"Get server public key","tags":["Configuration"],"parameters":[{"name":"X-API-Key","in":"header","type":"string","required":true}],"responses":{"200":{"description":"Success"},"401":{"description":"Unauthorized"},"500":{"description":"Server Error"}},"security":[{"ApiKeyAuth":[]}]}},"/health":{"get":{"summary":"Health check","tags":["Health"],"responses":{"200":{"description":"OK"}}}},"/ready":{"get":{"summary":"Readiness check","tags":["Health"],"responses":{"200":{"description":"OK"},"503":{"description":"Unavailable"}}}}},"definitions":{"AddPeerRequest":{"type":"object","properties":{"public_key":{"type":"string"},"allowed_ip":{"type":"string"},"endpoint":{"type":"string"}},"required":["public_key","allowed_ip"]},"RemovePeerRequest":{"type":"object","properties":{"public_key":{"type":"string"}},"required":["public_key"]},"SuccessResponse":{"type":"object","properties":{"status":{"type":"string"},"message":{"type":"string"}}}}}`
-	w.Write([]byte(swaggerJSON))
+	_, _ = w.Write([]byte(swaggerJSON))
 }
 
 func main() {
