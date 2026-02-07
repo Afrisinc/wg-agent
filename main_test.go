@@ -85,7 +85,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Run("missing API key", func(t *testing.T) {
 		handler := authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("OK"))
+			_, _ = w.Write([]byte("OK"))
 		})
 
 		req := httptest.NewRequest("GET", "/", nil)
@@ -100,7 +100,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Run("invalid API key", func(t *testing.T) {
 		handler := authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("OK"))
+			_, _ = w.Write([]byte("OK"))
 		})
 
 		req := httptest.NewRequest("GET", "/", nil)
@@ -116,7 +116,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Run("valid API key", func(t *testing.T) {
 		handler := authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("OK"))
+			_, _ = w.Write([]byte("OK"))
 		})
 
 		req := httptest.NewRequest("GET", "/", nil)

@@ -158,7 +158,7 @@ func addPeerHandler(w http.ResponseWriter, r *http.Request) {
 	if err := wireguard.AddPeer(ctx, req.PublicKey, req.AllowedIP); err != nil {
 		log.Printf("Error adding peer: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
 			Error:   "add_peer_failed",
 			Message: "Failed to add peer to WireGuard",
 		})
@@ -166,7 +166,7 @@ func addPeerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(SuccessResponse{
+	_ = json.NewEncoder(w).Encode(SuccessResponse{
 		Status:  "success",
 		Message: fmt.Sprintf("Peer %s added successfully", req.PublicKey[:8]+"..."),
 	})
@@ -192,7 +192,7 @@ func removePeerHandler(w http.ResponseWriter, r *http.Request) {
 	var req RemovePeerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
 			Error:   "invalid_request",
 			Message: fmt.Sprintf("Invalid JSON: %v", err),
 		})
@@ -201,7 +201,7 @@ func removePeerHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !validatePublicKey(req.PublicKey) {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
 			Error:   "invalid_public_key",
 			Message: "Public key format is invalid",
 		})
@@ -214,7 +214,7 @@ func removePeerHandler(w http.ResponseWriter, r *http.Request) {
 	if err := wireguard.RemovePeer(ctx, req.PublicKey); err != nil {
 		log.Printf("Error removing peer: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
 			Error:   "remove_peer_failed",
 			Message: "Failed to remove peer from WireGuard",
 		})
@@ -222,7 +222,7 @@ func removePeerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(SuccessResponse{
+	_ = json.NewEncoder(w).Encode(SuccessResponse{
 		Status:  "success",
 		Message: fmt.Sprintf("Peer %s removed successfully", req.PublicKey[:8]+"..."),
 	})

@@ -89,7 +89,6 @@ jobs:
 
     environment:
       name: production
-      url: https://${{ secrets.VPS_HOST }}:9999
 
     env:
       DEPLOY_GHCR_USERNAME: ${{ secrets.DEPLOY_GHCR_USERNAME }}
