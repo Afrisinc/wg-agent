@@ -107,33 +107,6 @@ jobs:
             # 🔐 GHCR LOGIN (pull only)
             echo "$DEPLOY_GHCR_TOKEN" | docker login ghcr.io -u "$DEPLOY_GHCR_USERNAME" --password-stdin
 
-            cat > docker-compose.yml <<EOF
-            version: "3.8"
-            services:
-              wg-agent:
-                image: ${DOCKER_IMAGE}:${BRANCH_NAME}
-                container_name: wg-agent
-                restart: unless-stopped
-                cap_add:
-                  - NET_ADMIN
-                  - SYS_MODULE
-                ports:
-                  - "9999:9999"
-                environment:
-                  API_KEY: "${{ secrets.API_KEY }}"
-                  HOST: "0.0.0.0"
-                  PORT: 9999
-                  WG_INTERFACE: wg0
-                  LOG_LEVEL: info
-                volumes:
-                  - /etc/wireguard:/etc/wireguard:ro
-                healthcheck:
-                  test: ["CMD", "wget", "--spider", "-q", "http://localhost:9999/health"]
-                  interval: 30s
-                  timeout: 5s
-                  retries: 3
-            EOF
-
             docker compose pull
             docker compose down || true
             docker compose up -d --remove-orphans
