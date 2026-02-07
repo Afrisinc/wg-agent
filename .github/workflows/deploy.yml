@@ -67,6 +67,7 @@ jobs:
             type=sha,prefix={{branch}}-
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -78,7 +79,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Image digest
-        run: echo "Image built successfully with digest: ${{ steps.docker_build.outputs.digest }}"
+        run: echo "Image built successfully"
 
   deploy:
     name: Deploy to VPS
