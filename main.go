@@ -277,14 +277,14 @@ func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Error getting public key: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
 			Error:   "get_public_key_failed",
 			Message: "Failed to retrieve public key",
 		})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"public_key": pubKey,
 	})
 }
@@ -299,7 +299,7 @@ func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 }
 
 // readinessHandler returns the readiness status of the agent
@@ -319,12 +319,12 @@ func readinessHandler(w http.ResponseWriter, r *http.Request) {
 	if err := wireguard.CheckInterface(ctx); err != nil {
 		log.Printf("Readiness check failed: %v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]string{"status": "not_ready"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "not_ready"})
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
 }
 
 // swaggerHandler serves the Swagger UI
