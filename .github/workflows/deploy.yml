@@ -45,7 +45,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Private Registry (Optional)
-        if: github.event_name != 'pull_request' && secrets.DEPLOY_GHCR_USERNAME != ''
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -195,7 +195,7 @@ jobs:
 
     steps:
       - name: Send Slack Notification
-        if: secrets.SLACK_WEBHOOK != ''
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.24.0
         with:
           webhook-url: ${{ secrets.SLACK_WEBHOOK }}
@@ -242,7 +242,7 @@ jobs:
             }
 
       - name: Send Discord Notification
-        if: secrets.DISCORD_WEBHOOK != ''
+        continue-on-error: true
         uses: sarisia/actions-status-discord@v1
         with:
           webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
