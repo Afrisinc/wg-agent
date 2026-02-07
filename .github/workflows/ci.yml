@@ -63,7 +63,7 @@ jobs:
         run: file wg-agent && ./wg-agent --version 2>/dev/null || echo "Binary created successfully"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wg-agent-linux
           path: wg-agent
