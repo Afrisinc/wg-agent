@@ -55,7 +55,7 @@ type SuccessResponse struct {
 // Validation regexes
 var (
 	publicKeyRegex = regexp.MustCompile(`^[A-Za-z0-9+/]{43}=$`)
-	ipRegex        = regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$`)
+	ipOctetRegex   = regexp.MustCompile(`^\d{1,3}$`)
 )
 
 // Middleware to check API key
@@ -94,7 +94,12 @@ func validateIP(ip string) bool {
 		return false
 	}
 	for _, part := range parts {
-		if !ipRegex.MatchString(part) {
+		if !ipOctetRegex.MatchString(part) {
+			return false
+		}
+		// Validate octet is between 0-255
+		var octet int
+		if _, err := fmt.Sscanf(part, "%d", &octet); err != nil || octet > 255 {
 			return false
 		}
 	}
