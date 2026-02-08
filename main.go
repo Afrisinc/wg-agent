@@ -89,17 +89,39 @@ func validatePublicKey(key string) bool {
 }
 
 func validateIP(ip string) bool {
-	parts := strings.Split(ip, ".")
-	if len(parts) != 4 {
+	// Check if CIDR notation is used
+	var ipPart string
+	var cidrPart string
+
+	if strings.Contains(ip, "/") {
+		parts := strings.Split(ip, "/")
+		if len(parts) != 2 {
+			return false
+		}
+		ipPart = parts[0]
+		cidrPart = parts[1]
+
+		// Validate CIDR prefix (0-32 for IPv4)
+		var prefix int
+		if _, err := fmt.Sscanf(cidrPart, "%d", &prefix); err != nil || prefix < 0 || prefix > 32 {
+			return false
+		}
+	} else {
+		ipPart = ip
+	}
+
+	// Validate IPv4 address
+	octets := strings.Split(ipPart, ".")
+	if len(octets) != 4 {
 		return false
 	}
-	for _, part := range parts {
-		if !ipOctetRegex.MatchString(part) {
+	for _, octet := range octets {
+		if !ipOctetRegex.MatchString(octet) {
 			return false
 		}
 		// Validate octet is between 0-255
-		var octet int
-		if _, err := fmt.Sscanf(part, "%d", &octet); err != nil || octet > 255 {
+		var octetVal int
+		if _, err := fmt.Sscanf(octet, "%d", &octetVal); err != nil || octetVal > 255 {
 			return false
 		}
 	}
